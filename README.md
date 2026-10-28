@@ -70,6 +70,14 @@ Everything else in `config.json` has a default and can be left out:
 
 - **No sound.** When a display is plugged in over HDMI, Windows often makes it the sound output. Click
   the speaker icon by the clock and pick the laptop's speakers or the speakerphone.
+- **Plug the speakerphone in by USB, not Bluetooth.** When an app opens a Bluetooth speakerphone's mic,
+  Windows switches it to its hands-free mode, a different device, and both the mic and the sound lose
+  it. Over USB its echo cancelling also keeps her voice out of its own mic. If the mic named in
+  `config.json` isn't there, the player waits for it rather than use another one (the laptop's own mic
+  would hear her).
+- **She answers herself.** The mic is hearing her: her voice is coming out of something other than the
+  speakerphone (the laptop's speakers). Make the speakerphone the sound output. The player also drops
+  what the mic hears when it's mostly her own last words, but echo cancelling is the real fix.
 - **The 3D looks wrong, or different off to the side.** The page has to fill the Portrait pixel for pixel.
   The player sets Chrome's scaling to 1x itself. If Chrome didn't land on the Portrait, drag it there
   and press F11.

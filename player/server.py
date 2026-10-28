@@ -9,6 +9,7 @@ begun at its mic; the page here speaks those and no others. Camera and glass req
 glass at home.
 """
 import base64
+import collections
 import http.server
 import json
 import mimetypes
@@ -40,6 +41,8 @@ chat_turns = {}                # (Choom, chat or group, its id) -> when her turn
 tower_talk = {"open": False, "at": 0.0}
 image_cache = {}
 heartbeat_now = threading.Event()
+SPOKEN_S = 90                  # what she said this long ago may still come back to the mic
+spoken = collections.deque(maxlen=30)  # (when, sentence) spoken here, for tower_ears' echo guard
 
 
 def write_log(entry):
@@ -102,6 +105,8 @@ def follow_choom():
                         app_mute["muted"] = event["muted"]
                     if kind == "content":
                         event["speak"] = event.get("speakTravel") is True
+                        if event["speak"] and isinstance(event.get("text"), str):
+                            spoken.append((time.time(), event["text"]))
                     if event.get("source") in ("chat", "group") and event.get("choom"):
                         turn = (event["choom"], event["source"], event.get("chatId") or event.get("roomId"))
                         if kind == "turn_start":
@@ -199,6 +204,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/status":
             talking = tower_talk["open"] and time.time() - tower_talk["at"] < 180
             return self._json({**latest, "choom_feed": feed, "tower_conversation": {"open": talking},
+                               "spoken": [text for at, text in list(spoken) if time.time() - at < SPOKEN_S],
                                "chat_turns": sorted({c for (c, source, _), at in chat_turns.items()
                                                      if source == "chat" and time.time() - at < 600})})
         if path == "/events":
@@ -330,7 +336,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
                        "choom": choom, "chatId": None, "roomId": None})
         latest["ears"], received_at["ears"] = entry, time.time()
         note({"kind": "ears", "event": event, "choom": choom,
-              **{k: entry[k] for k in ("message", "seconds", "voiced", "ended", "floor") if k in entry}})
+              **{k: entry[k] for k in ("message", "seconds", "voiced", "ended", "floor", "echo") if k in entry}})
         return self._json({})
 
 
