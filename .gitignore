@@ -1,0 +1,10 @@
+# The tunnel's login lives here: never in git.
+config.json
+# Synced from home, and made here.
+glass/
+calibration/
+logs/
+.chrome-profile/
+.venv/
+__pycache__/
+*.part

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Secret scan of what's staged (gitleaks). The repo is public, so with no scanner the commit is
+# blocked rather than let through. Enable with: git config core.hooksPath .githooks
+set -uo pipefail
+gitleaks_bin="$(command -v gitleaks || true)"
+[ -z "$gitleaks_bin" ] && [ -x "$HOME/.local/bin/gitleaks" ] && gitleaks_bin="$HOME/.local/bin/gitleaks"
+if [ -z "$gitleaks_bin" ]; then
+  echo "pre-commit: gitleaks is not installed; commit blocked (this repo is public)." >&2
+  exit 1
+fi
+if ! "$gitleaks_bin" git --staged --no-banner --redact; then
+  echo "pre-commit: gitleaks found a possible secret in the staged changes; commit blocked." >&2
+  exit 1
+fi

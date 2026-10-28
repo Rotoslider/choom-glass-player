@@ -1,0 +1,11 @@
+{
+  "_about": "Copy to config.json (kept out of git: it holds the tunnel's login) and fill in choom_url, choom_login and share_url. The rest are defaults you can leave out.",
+  "choom_url": "https://your-tunnel.ngrok-free.app",
+  "choom_login": "user:password",
+  "share_url": "http://192.168.1.23:8770",
+  "glass_dir": "glass",
+  "port": 8765,
+  "mic": {"name": "EMEET", "device": "cpu", "compute": "int8", "model": "small.en", "off": false},
+  "page": {"views": 32, "smoothing": false},
+  "chrome": ""
+}

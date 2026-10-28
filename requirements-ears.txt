@@ -1,0 +1,5 @@
+# The mic (tower_ears.py): voice detection, the wake phrase ("OK Genesis") on the CPU, and the microphone.
+numpy
+webrtcvad-wheels
+faster-whisper
+sounddevice
