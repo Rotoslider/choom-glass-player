@@ -1,7 +1,7 @@
 {
-  "_about": "Copy to config.json (kept out of git: it holds the tunnel's login) and fill in choom_url, choom_login and share_url. The rest are defaults you can leave out.",
-  "choom_url": "https://your-tunnel.ngrok-free.app",
-  "choom_login": "user:password",
+  "_about": "Copy to config.json (kept out of git) and fill in choom_url and share_url. choom_url is the Choom app from away: over Tailscale its computer's Tailscale name and port 3000; through a tunnel the tunnel's address, with choom_login (user:password) if it has one. The rest are defaults you can leave out.",
+  "choom_url": "http://your-mac:3000",
+  "choom_login": "",
   "share_url": "http://192.168.1.23:8770",
   "glass_dir": "glass",
   "port": 8765,
