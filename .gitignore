@@ -1,5 +1,8 @@
-# The tunnel's login lives here: never in git.
+# The tunnel's login lives here: never in git, nor any copy of it.
 config.json
+config.json.*
+.env
+.env.*
 # Synced from home, and made here.
 glass/
 calibration/
