@@ -148,12 +148,14 @@ def voice_heartbeat():
 
 
 def synthesize(text, voice):
-    """WAV bytes of `text` in her voice, from the app (which cleans the text and runs Chatterbox)."""
-    with choom_open("/api/tts", {"text": text, "voice": voice}, timeout=90) as response:
+    """(audio bytes, its type) of `text` in her voice, from the app (which cleans the text and runs
+    Chatterbox). Asked for as Opus, a twelfth the size of WAV: from away the app sends that (the
+    expedition rig's Starlink has little data), and the page plays either."""
+    with choom_open("/api/tts", {"text": text, "voice": voice, "formats": ["opus"]}, timeout=90) as response:
         result = json.loads(response.read())
     if not result.get("success") or not result.get("audio"):
         raise RuntimeError(result.get("error") or "no audio")
-    return base64.b64decode(result["audio"])
+    return base64.b64decode(result["audio"]), result.get("mimeType") or "audio/wav"
 
 
 def choom_image(image_id):
@@ -312,7 +314,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self.path == "/speak":
             text = str(entry.get("text", ""))
             try:
-                return self._send(synthesize(text, entry.get("voice") or "sophie"), "audio/wav")
+                return self._send(*synthesize(text, entry.get("voice") or "sophie"))
             except Exception as e:
                 note({"kind": "speak", "chars": len(text), "error": f"{type(e).__name__}: {e}"})
                 return self._json({"error": str(e)}, 502)
