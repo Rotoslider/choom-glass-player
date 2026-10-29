@@ -6,6 +6,6 @@
   "glass_dir": "glass",
   "port": 8765,
   "mic": {"name": "EMEET", "device": "cpu", "compute": "int8", "model": "small.en", "off": false},
-  "page": {"views": 32, "smoothing": false},
+  "page": {"views": 32, "smoothing": false, "campfire": false},
   "chrome": ""
 }

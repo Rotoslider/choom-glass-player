@@ -23,9 +23,10 @@ from pathlib import Path
 
 from common import CHOOM_URL, CONFIG, GLASS_DIR, LOGS, PORT, choom_open, find_calibration
 
-# The page's look on a laptop: fewer views and no smoothing (Iris Xe ran 30 fps with these, 3 with
-# the home glass's 48 views and smoothing). config.json "page" adds to or overrides them.
-PAGE_SETTINGS = {"views": 32, "smoothing": False, **CONFIG.get("page", {})}
+# The page's look on a laptop: fewer views, no smoothing (Iris Xe ran 30 fps with these, 3 with the
+# home glass's 48 views and smoothing) and no campfire circle for the group (three seated Chooms and
+# the fire lagged). config.json "page" adds to or overrides them.
+PAGE_SETTINGS = {"views": 32, "smoothing": False, "campfire": False, **CONFIG.get("page", {})}
 TYPES = {".js": "text/javascript", ".mjs": "text/javascript", ".json": "application/json", ".mp4": "video/mp4",
          ".html": "text/html", ".glb": "model/gltf-binary", ".wasm": "application/wasm"}
 IMAGE_ID = re.compile(r"[A-Za-z0-9_-]{1,64}")

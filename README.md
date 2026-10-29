@@ -64,7 +64,7 @@ Everything else in `config.json` has a default and can be left out:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `page` | `{"views": 32, "smoothing": false}` | the page's [install settings](https://github.com/Rotoslider/Choom/blob/main/hologram/docs/reference.md#looks-and-outfits); `48` and `true` are the home glass's, for a bigger GPU |
+| `page` | `{"views": 32, "smoothing": false, "campfire": false}` | the page's [install settings](https://github.com/Rotoslider/Choom/blob/main/hologram/docs/reference.md#looks-and-outfits): with `campfire` off the group stays on the standing stage after dark (three seated Chooms and the fire lag on a laptop); `48`, `true` and `true` are the home glass's, for a bigger GPU |
 | `mic` | `{"name": "EMEET", "device": "cpu", "compute": "int8", "model": "small.en"}` | part of the mic's name, and where Whisper runs (`"device": "cuda"` with an NVIDIA GPU); `"off": true` starts no mic |
 | `glass_dir` | `glass` | where the sync puts the page and clips |
 | `port` | `8765` | the player's own address, on this computer only |
