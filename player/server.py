@@ -6,7 +6,8 @@ the Choom app's live feed, her voice and her pictures, reached through the app's
 The feed is the one the glass at home follows. Each spoken sentence carries `speakTravel`, true when
 the conversation is open in a browser in front of this glass (the app knows it by the address) or was
 begun at its mic; the page here speaks those and no others. Camera and glass requests are left to the
-glass at home.
+glass at home; what it did for a glass request (clothes, a move) comes back as glass_shown and is done
+here too.
 """
 import base64
 import collections
@@ -102,6 +103,13 @@ def follow_choom():
                     last_kind[key] = kind
                     if kind in ("camera_request", "glass_request"):
                         continue  # the glass at home answers these
+                    if kind == "glass_shown":
+                        # What the glass at home did for a Choom's request (clothes she put on, a move):
+                        # this page does it too.
+                        for shown in event.get("events") or []:
+                            if isinstance(shown, dict):
+                                broadcast(shown)
+                        continue
                     if kind == "mute" and isinstance(event.get("muted"), bool):
                         app_mute["muted"] = event["muted"]
                     if kind == "content":
