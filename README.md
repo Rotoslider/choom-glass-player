@@ -80,6 +80,8 @@ Everything else in `config.json` has a default and can be left out:
   it. Over USB its echo cancelling also keeps her voice out of its own mic. If the mic named in
   `config.json` isn't there, the player waits for it rather than use another one (the laptop's own mic
   would hear her).
+- **Loud static from the speakerphone** while she talks, though it played cleanly before: unplug its USB
+  and plug it back in. (It happened once, after the player was restarted; a replug cleared it.)
 - **She answers herself.** The mic is hearing her: her voice is coming out of something other than the
   speakerphone (the laptop's speakers). Make the speakerphone the sound output. The player also drops
   what the mic hears when it's mostly her own last words, but echo cancelling is the real fix.
