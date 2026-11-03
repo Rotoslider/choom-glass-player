@@ -41,8 +41,14 @@ it follows the Choom app from away, over Tailscale (or a tunnel).
 
 ## Before a trip: sync
 
-1. On the home glass, start the share: `python3 hologram/tools/share_glass.py` (it stops by itself after 3 hours).
-2. On the laptop, at home, run `sync.bat`.
+1. On the home glass (the NUC), start the share from the Choom app's folder, not this one:
+   ```
+   cd ~/projects/Choom-portrait
+   python3 hologram/tools/share_glass.py
+   ```
+   Leave that window open; the share stops by itself after 3 hours. For longer, give the port and the
+   hours: `python3 hologram/tools/share_glass.py 8770 5`.
+2. On the laptop, at home on the same network, run `sync.bat`.
 
 The first sync copies about 11 GB: the page, the mic's script, and each Choom's clips. After that only
 what changed is copied. Run it again after new clips are built at home.
