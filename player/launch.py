@@ -1,14 +1,22 @@
 #!/usr/bin/env python3
 """Start the travel glass: the server, the mic (tower_ears.py, if its packages are installed) and
-Chrome full screen on the Portrait. Ctrl+C (or closing this window) stops them all.
+Chrome full screen on the Portrait. Ctrl+C (or closing this window) stops them all, the glass window
+included.
+
+Chrome is a program of its own: closing the start window doesn't close it, and a Chrome already running
+on the player's profile opens each new start as one more window. So stopping closes the glass window,
+and starting first closes any glass window an earlier start left open. A second start while one is
+running says so and leaves it be.
 
 Chrome gets a profile of its own, so it never touches your everyday browser: kiosk mode on the
 Portrait's screen, Windows' display scaling ignored (the page needs the Portrait's 1536x2048 pixels
 one to one), and sound allowed without a click first.
 """
 import importlib.util
+import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -19,6 +27,7 @@ from common import CHOOM_URL, CONFIG, GLASS_DIR, HERE, LOGS, PORT
 
 PORTRAIT = (1536, 2048)
 PAGE = f"http://127.0.0.1:{PORT}/living.html"
+PROFILE = HERE / ".chrome-profile"  # Chrome's own profile for the glass; nothing else uses it
 
 
 def portrait_screen():
@@ -61,6 +70,115 @@ def find_chrome():
     return shutil.which("google-chrome") or shutil.which("chromium") or shutil.which("chromium-browser")
 
 
+def glass_chrome():
+    """PIDs of every Chrome process on the glass's profile (its windows and their helpers)."""
+    mine = str(PROFILE).lower()
+    if os.name == "nt":
+        # No double quotes inside: Windows would have to escape them on the way to PowerShell.
+        script = ("Get-CimInstance -ClassName Win32_Process -Filter 'Name = ''chrome.exe''' | "
+                  "Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress")
+        try:
+            out = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+                                 capture_output=True, text=True, timeout=30,
+                                 creationflags=0x08000000).stdout.strip()  # CREATE_NO_WINDOW
+            rows = json.loads(out) if out else []
+        except Exception as e:
+            print(f"glass: couldn't look for an earlier glass window ({type(e).__name__})")
+            return []
+        rows = [rows] if isinstance(rows, dict) else rows
+        return [int(r["ProcessId"]) for r in rows if mine in str(r.get("CommandLine") or "").lower()]
+    try:
+        out = subprocess.run(["ps", "-A", "-ww", "-o", "pid=", "-o", "args="], capture_output=True, text=True, timeout=10).stdout
+    except Exception:
+        return []
+    pids = []
+    for line in out.splitlines():
+        pid, _, args = line.strip().partition(" ")
+        if pid.isdigit() and int(pid) != os.getpid() and mine in args.lower():
+            pids.append(int(pid))
+    return pids
+
+
+def close_chrome(pids):
+    """Close those Chrome processes and wait until they're gone (a Chrome still closing on the profile
+    would take the next start's window as one of its own)."""
+    if not pids:
+        return
+    if os.name == "nt":
+        # Directly, not through taskkill: this also runs while the start window is closing, when a new
+        # console program may not start. Chrome's helpers end with its main process.
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.OpenProcess.restype = wintypes.HANDLE
+        kernel32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        kernel32.TerminateProcess.argtypes = (wintypes.HANDLE, wintypes.UINT)
+        kernel32.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        handles = []
+        for pid in pids:
+            handle = kernel32.OpenProcess(0x00100001, False, pid)  # SYNCHRONIZE | PROCESS_TERMINATE
+            if handle:
+                kernel32.TerminateProcess(handle, 1)
+                handles.append(handle)
+        for handle in handles:
+            kernel32.WaitForSingleObject(handle, 5000)
+            kernel32.CloseHandle(handle)
+        return
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        for pid in pids:
+            try:
+                os.kill(pid, sig)
+            except OSError:
+                pass
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            alive = []
+            for pid in pids:
+                try:
+                    os.waitpid(pid, os.WNOHANG)  # reaped, if it's this start's own Chrome
+                except ChildProcessError:
+                    pass
+                try:
+                    os.kill(pid, 0)
+                    alive.append(pid)
+                except OSError:
+                    pass
+            if not (pids := alive):
+                return
+            time.sleep(0.1)
+
+
+def player_running():
+    """A player's server already answers on the port (another start window)."""
+    try:
+        urllib.request.urlopen(f"http://127.0.0.1:{PORT}/status", timeout=1).read()
+        return True
+    except Exception:
+        return False
+
+
+def on_window_close(stop):
+    """On Windows, closing the start window ends Python without running its finally: blocks; a console
+    handler gets a few seconds to stop everything first."""
+    if os.name != "nt":
+        return
+    import ctypes
+    from ctypes import wintypes
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+    def handler(kind):
+        if kind in (2, 5, 6):  # the window closed, logoff, shutdown
+            stop()
+            return True
+        return False  # Ctrl+C: Python's own KeyboardInterrupt, then stop() in main's finally:
+    on_window_close.handler = handler  # kept for as long as Python runs
+    try:
+        ctypes.windll.kernel32.SetConsoleCtrlHandler(handler, True)
+    except Exception:
+        pass
+
+
 def ears_ready():
     """The mic's packages are installed (requirements-ears.txt)."""
     return all(importlib.util.find_spec(m) for m in ("numpy", "webrtcvad", "faster_whisper", "sounddevice"))
@@ -75,7 +193,32 @@ def start(name, args, env=None):
 
 
 def main():
-    children = [start("server", [sys.executable, str(HERE / "player" / "server.py")])]
+    if player_running():
+        raise SystemExit("The travel glass is already running in another start window. Use that one, or close it\n"
+                         "and start again.")
+    leftover = glass_chrome()
+    if leftover:
+        close_chrome(leftover)
+        print("glass: closed the glass window an earlier start left open")
+
+    children, stopped = [], []
+
+    def stop():
+        """Everything this start began, the glass window first, then anything else on its profile."""
+        if stopped:
+            return
+        stopped.append(True)
+        for child in reversed(children):
+            if child.poll() is None:
+                if child is chrome_child:
+                    close_chrome([child.pid])
+                else:
+                    child.terminate()
+        close_chrome(glass_chrome())
+
+    chrome_child = None
+    on_window_close(stop)
+    children.append(start("server", [sys.executable, str(HERE / "player" / "server.py")]))
     for _ in range(40):  # up within a few seconds, or it says why in logs/server.log
         try:
             urllib.request.urlopen(f"http://127.0.0.1:{PORT}/status", timeout=1).read()
@@ -105,10 +248,10 @@ def main():
     if not chrome:
         print(f"Chrome not found: set \"chrome\" in config.json, or open {PAGE} yourself.")
     else:
-        args = [chrome, f"--user-data-dir={HERE / '.chrome-profile'}", f"--app={PAGE}", "--kiosk",
+        args = [chrome, f"--user-data-dir={PROFILE}", f"--app={PAGE}", "--kiosk",
                 "--force-device-scale-factor=1", "--autoplay-policy=no-user-gesture-required",
-                "--no-first-run", "--no-default-browser-check", "--noerrdialogs", "--disable-session-crashed-bubble",
-                "--disable-features=Translate"]
+                "--no-first-run", "--no-default-browser-check", "--noerrdialogs",
+                "--disable-session-crashed-bubble", "--hide-crash-restore-bubble", "--disable-features=Translate"]
         if screen:
             # Its middle, so the window lands on the Portrait whether Chrome counts in real or scaled
             # pixels; kiosk mode then fills that screen.
@@ -117,7 +260,8 @@ def main():
             print(f"glass: Chrome on the Portrait at {x},{y}")
         else:
             print("glass: no 1536x2048 screen found; Chrome opens on the main one (drag it over, F11)")
-        children.append(start("chrome", args))
+        chrome_child = start("chrome", args)
+        children.append(chrome_child)
 
     print("Running. Ctrl+C here stops the travel glass.", flush=True)
     try:
@@ -127,9 +271,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
-        for child in reversed(children):
-            if child.poll() is None:
-                child.terminate()
+        stop()
 
 
 if __name__ == "__main__":

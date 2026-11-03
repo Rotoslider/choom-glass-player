@@ -56,7 +56,8 @@ what changed is copied. Run it again after new clips are built at home.
 ## On the road
 
 Run `start.bat`. It starts the server, the mic and Chrome, full screen on the Portrait. Close its window
-to stop the travel glass.
+to stop the travel glass; the glass window closes with it. Starting again first closes any glass window
+an earlier start left open. While one is running, a second `start.bat` says so and stops.
 
 - **Talk at it.** Say "OK Genesis, ..." (or Aloy, Optic or Eve), or "OK Chooms" for the group room. Her
   answer comes from the glass.
